@@ -26,18 +26,42 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
         }
     }
 
-    mObjects.push_back(new Triangle());
+    /*mObjects.push_back(new Triangle());
     mObjects.push_back((new TriangleSurface()));
     mObjects.push_back((new WorldAxis()));
-	mObjects.push_back(new HeightMap());
-    mObjects.push_back(new ObjMesh(assetPath + "suzanne.obj"));
+    mObjects.push_back(new HeightMap());
+    mObjects.push_back(new ObjMesh(assetPath + "suzanne.obj"));*/
+
     // Dag 030225
-    mObjects.at(0)->setName("tri");
+    /*mObjects.at(0)->setName("tri");
     mObjects.at(1)->setName("quad");
     mObjects.at(2)->setName("axis");
 	mObjects.at(3)->setName("terrain");
     mObjects.at(4)->setName("suzanne");
-    static_cast<HeightMap*>(mObjects.at(3))->makeTerrain(assetPath + "Heightmap.jpg");
+    static_cast<HeightMap*>(mObjects.at(3))->makeTerrain(assetPath + "Heightmap.jpg");*/
+
+    mObjects.push_back(new WorldAxis());
+    mObjects.push_back(new PointCloud(assetPath + "pointCloudData.txt"));
+    mObjects.at(1)->move(0.f,-1.f);
+
+    pointCloud = new PointCloud(assetPath + "pointCloudData.txt");
+    pointCloud->setName("PointCloud");
+
+    qDebug() << "Retrieved Point Cloud! Length: " << pointCloud->getVertexCount() << " | Min Pos: " << pointCloud->minPos << " | Max Pos: " << pointCloud->maxPos;
+
+    pointCloud->move(-pointCloud->minPos.x(), -pointCloud->minPos.y(), -pointCloud->minPos.z());
+
+    for (const Vertex &v : pointCloud->getVertices())
+    {
+        if (v.y == 0.0f)
+        {
+            mObjects.push_back(new Triangle());
+            mObjects.at(1)->setName("testTriangle");
+            mObjects.at(1)->move(v.x, v.y, v.z);
+
+            qDebug() << "Found v.y = 0";
+        }
+    }
 
     // **************************************
     // Objects in optional map
@@ -78,6 +102,11 @@ void Renderer::initResources()
 		if ((*it)->getIndices().size() > 0) //If object has indices
 			createIndexBuffer(uniAlign, *it);
     }
+
+    //Creates buffer for Point Cloud
+    createVertexBuffer(uniAlign, pointCloud);
+    if (pointCloud->getIndices().size() > 0)
+        createIndexBuffer(uniAlign, pointCloud);
 
     //DescriptorSets must be made before the Pipelines
     createDescriptorSetLayouts();
@@ -166,6 +195,9 @@ void Renderer::initResources()
     mColorMaterial.vertShaderModule = createShader(QStringLiteral(":/color_vert.spv"));
     mColorMaterial.fragShaderModule = createShader(QStringLiteral(":/color_frag.spv"));
 
+    mPointMaterial.vertShaderModule = mColorMaterial.vertShaderModule;
+    mPointMaterial.fragShaderModule = mColorMaterial.fragShaderModule;
+
     //Updated to more common way to write it:
     VkPipelineShaderStageCreateInfo vertShaderCreateInfoC{};
     vertShaderCreateInfoC.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -199,7 +231,7 @@ void Renderer::initResources()
 	// **** Input Assembly **** - describes how primitives are assembled in the Graphics pipeline
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;       //Draw triangles
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;       //Draw triangles
 	inputAssembly.primitiveRestartEnable = VK_FALSE;                    //Allow strips to be connected, not used in TriangleList
     pipelineInfo.pInputAssemblyState = &inputAssembly;
 
@@ -209,7 +241,7 @@ void Renderer::initResources()
     rasterization.polygonMode = VK_POLYGON_MODE_FILL;           // VK_POLYGON_MODE_LINE will make a wireframe;
     rasterization.cullMode = VK_CULL_MODE_NONE;                 // VK_CULL_MODE_BACK_BIT will cull backsides
 	rasterization.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;  // Front face is counter clockwise - could be clockwise with VK_FRONT_FACE_CLOCKWISE
-    rasterization.lineWidth = 1.0f;                             // Not important for VK_POLYGON_MODE_FILL
+    rasterization.lineWidth = 10.0f;                             // Not important for VK_POLYGON_MODE_FILL
     pipelineInfo.pRasterizationState = &rasterization;
 
     // Enable multisampling
@@ -265,6 +297,17 @@ void Renderer::initResources()
     if (result != VK_SUCCESS)
         qFatal("Failed to create graphics pipeline: %d", result);
 
+    //Making a pipeline for drawing points
+    mPointMaterial.pipeline = mPipeline1;                       // reusing most of the settings from the first pipeline
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;   // draw lines
+    rasterization.polygonMode = VK_POLYGON_MODE_FILL;           // VK_POLYGON_MODE_LINE will make a wireframe; VK_POLYGON_MODE_FILL
+    rasterization.lineWidth = 5.0f;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pStages = shaderStagesC;
+    result = mDeviceFunctions->vkCreateGraphicsPipelines(logicalDevice, mPipelineCache, 1, &pipelineInfo, nullptr, &mPointMaterial.pipeline);
+    if (result != VK_SUCCESS)
+        qFatal("Failed to create graphics pipeline: %d", result);
+
 
 	// Destroying the shader modules, we won't need them anymore after the pipeline is created
     if (vertShaderModule)
@@ -275,6 +318,10 @@ void Renderer::initResources()
         mDeviceFunctions->vkDestroyShaderModule(logicalDevice, mColorMaterial.vertShaderModule, nullptr);
     if (mColorMaterial.fragShaderModule)
         mDeviceFunctions->vkDestroyShaderModule(logicalDevice, mColorMaterial.fragShaderModule, nullptr);
+    if (mPointMaterial.vertShaderModule)
+        mDeviceFunctions->vkDestroyShaderModule(logicalDevice, mPointMaterial.vertShaderModule, nullptr);
+    if (mPointMaterial.fragShaderModule)
+        mDeviceFunctions->vkDestroyShaderModule(logicalDevice, mPointMaterial.fragShaderModule, nullptr);
 
 	// Create the uniform buffer
 	createUniformBuffer();
@@ -326,8 +373,10 @@ void Renderer::startNextFrame()
         //Draw type
 		if ((*it)->getDrawType() == 0)
 			mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline1);
-		else
+        else if ((*it)->getDrawType() == 1)
 			mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorMaterial.pipeline);
+        else
+            mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPointMaterial.pipeline);
 
         QMatrix4x4 mvp = mCamera.projectionMatrix() * mCamera.viewMatrix() * (*it)->getMatrix();
         setModelMatrix((*it)->getMatrix()); //mvp);
@@ -345,12 +394,37 @@ void Renderer::startNextFrame()
 		else   //No index buffer - use regular draw
 			mDeviceFunctions->vkCmdDraw(commandBuffer, (*it)->getVertices().size(), 1, 0, 0);   
     }
+
+    //Trying to draw Point Cloud
+    if (pointCloud->getDrawType() == 0)
+        mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline1);
+    else if (pointCloud->getDrawType() == 1)
+        mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorMaterial.pipeline);
+    else
+        mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPointMaterial.pipeline);
+
+    QMatrix4x4 mvp = mCamera.projectionMatrix() * mCamera.viewMatrix() * pointCloud->getMatrix();
+    setModelMatrix(pointCloud->getMatrix());
+
+    setTexture(mTextureHandle, commandBuffer);
+
+    mDeviceFunctions->vkCmdBindVertexBuffers(commandBuffer, 0, 1, &pointCloud->getVBuffer(), &vbOffset);
+    //Check if we have an index buffer - if so, use Indexed draw
+    if (pointCloud->getIndices().size() > 0)
+    {
+        mDeviceFunctions->vkCmdBindIndexBuffer(commandBuffer, pointCloud->getIBuffer(), 0, VK_INDEX_TYPE_UINT32);
+        mDeviceFunctions->vkCmdDrawIndexed(commandBuffer, pointCloud->getIndices().size(), 1, 0, 0, 0); //size == number of indices
+    }
+    else   //No index buffer - use regular draw
+        mDeviceFunctions->vkCmdDraw(commandBuffer, pointCloud->getVertices().size(), 1, 0, 0);
     /***************************************/
 
     mDeviceFunctions->vkCmdEndRenderPass(commandBuffer);
 
+    //Endof Trying to draw Point Cloud
+
     //Hardcoded!!!
-    mObjects.at(1)->rotate(1.0f, 0.0f, 0.0f, 1.0f);
+    //mObjects.at(1)->rotate(1.0f, 0.0f, 0.0f, 1.0f);
     
     mWindow->frameReady();
     mWindow->requestUpdate(); // render continuously, throttled by the presentation rate
@@ -777,6 +851,12 @@ void Renderer::releaseResources()
         mColorMaterial.pipeline = VK_NULL_HANDLE;
     }
 
+    if (mPointMaterial.pipeline)
+    {
+        mDeviceFunctions->vkDestroyPipeline(dev, mPointMaterial.pipeline, nullptr);
+        mPointMaterial.pipeline = VK_NULL_HANDLE;
+    }
+
     if (mPipelineLayout) {
         mDeviceFunctions->vkDestroyPipelineLayout(dev, mPipelineLayout, nullptr);
         mPipelineLayout = VK_NULL_HANDLE;
@@ -815,6 +895,19 @@ void Renderer::releaseResources()
         }
     }
 
+    if (pointCloud->getVBuffer())
+    {
+        BufferHandle handle { pointCloud->getVBufferMemory(), pointCloud->getVBuffer() };
+        destroyBuffer(handle);
+        pointCloud->getVBuffer() = VK_NULL_HANDLE;
+        pointCloud->getVBufferMemory() = VK_NULL_HANDLE;
+
+    }
+    if (pointCloud->getIBuffer()) {
+        BufferHandle handle{ pointCloud->getIBufferMemory(), pointCloud->getIBuffer() };
+        destroyBuffer(handle);
+        pointCloud->getIBuffer() = VK_NULL_HANDLE;
+    }
     // Destroy textures
     destroyTexture(mTextureHandle);
 

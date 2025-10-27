@@ -29,7 +29,8 @@ public:
     inline std::string getName() const { return mName; }
     inline int getDrawType() const { return drawType; }
     inline QMatrix4x4 getMatrix() const {return mMatrix;}
-	inline std::vector<Vertex> getVertices() const { return mVertices; }
+    inline std::vector<Vertex> getVertices() const { return mVertices; }
+    inline const Vertex& getVertex(int index) const { return mVertices.at(index); }
 	inline std::vector<uint32_t> getIndices() const { return mIndices; }
 
     QVector3D getPosition();

@@ -7,6 +7,7 @@
 #include "Camera.h"
 #include "VisualObject.h"
 #include "Utilities.h"
+#include "PointCloud.h"
 
 class Renderer : public QVulkanWindowRenderer
 {
@@ -37,6 +38,8 @@ public:
 
     std::vector<VisualObject*>& getObjects() { return mObjects; }
     std::unordered_map<std::string, VisualObject*>& getMap() { return mMap; }
+
+    PointCloud* pointCloud{};
 
 protected:
 
@@ -121,6 +124,12 @@ private:
 		//VkPipelineLayout pipelineLayout{ VK_NULL_HANDLE };    //also should have had a spesific pipeline layout
         VkPipeline pipeline{ VK_NULL_HANDLE };
     } mColorMaterial;
+
+    struct {
+        VkShaderModule vertShaderModule;
+        VkShaderModule fragShaderModule;
+        VkPipeline pipeline{ VK_NULL_HANDLE };
+    } mPointMaterial;
 };
 
 #endif // RENDERER_H
