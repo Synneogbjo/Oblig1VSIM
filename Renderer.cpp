@@ -41,15 +41,11 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     static_cast<HeightMap*>(mObjects.at(3))->makeTerrain(assetPath + "Heightmap.jpg");*/
 
     mObjects.push_back(new WorldAxis());
-    mObjects.push_back(new PointCloud(assetPath + "pointCloudData.txt"));
-    mObjects.at(1)->move(0.f,-1.f);
 
     pointCloud = new PointCloud(assetPath + "pointCloudData.txt");
     pointCloud->setName("PointCloud");
 
     qDebug() << "Retrieved Point Cloud! Length: " << pointCloud->getVertexCount() << " | Min Pos: " << pointCloud->minPos << " | Max Pos: " << pointCloud->maxPos;
-
-    pointCloud->move(-pointCloud->minPos.x(), -pointCloud->minPos.y(), -pointCloud->minPos.z());
 
     for (const Vertex &v : pointCloud->getVertices())
     {
