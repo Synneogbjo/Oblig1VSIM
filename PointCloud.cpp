@@ -18,7 +18,7 @@ PointCloud::PointCloud(const std::string &filename)
         return;
     // read input from math part of compulsory
     float minX = INFINITY, minY = INFINITY, minZ = INFINITY, maxX = -INFINITY, maxY = -INFINITY, maxZ = -INFINITY;
-    Vertex v;
+    Vertex v{0.f,0.f,0.f,0.7f,0.7f,0.9f,0.f,0.f};
 
     std::string line;
     float x, y, z;
@@ -45,14 +45,17 @@ PointCloud::PointCloud(const std::string &filename)
         // Read x
         if (std::getline(ss, token, ' ')) {
             v.x = std::stof(token);
+            //v.r = v.x;
         }
         // Read z
         if (std::getline(ss, token, ' ')) {
             v.z = std::stof(token);
+            //v.g = v.z;
         }
         // Read ys
         if (std::getline(ss, token, '\n')) {
             v.y = std::stof(token);
+            //v.b = v.y;
         }
 
         mVertices.push_back(v);

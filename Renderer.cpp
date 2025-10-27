@@ -9,6 +9,8 @@
 #include "HeightMap.h"
 #include "stb_image.h"
 #include "ObjMesh.h"
+#include "triangulationmesh.h"
+#include "ball.h"
 
 /*** Renderer class ***/
 Renderer::Renderer(QVulkanWindow *w, bool msaa)
@@ -41,23 +43,17 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     static_cast<HeightMap*>(mObjects.at(3))->makeTerrain(assetPath + "Heightmap.jpg");*/
 
     mObjects.push_back(new WorldAxis());
+    mObjects.push_back(new TriangulationMesh());
+    mObjects.push_back(new Ball(1.f, 1.f, assetPath + "sphere.obj"));
+
+    mObjects.at(1)->move(2.f);
+    //mObjects.at(2)->move(2.f, 2.f);
+    mObjects.at(2)->move(2.f);
 
     pointCloud = new PointCloud(assetPath + "pointCloudData.txt");
     pointCloud->setName("PointCloud");
 
     qDebug() << "Retrieved Point Cloud! Length: " << pointCloud->getVertexCount() << " | Min Pos: " << pointCloud->minPos << " | Max Pos: " << pointCloud->maxPos;
-
-    for (const Vertex &v : pointCloud->getVertices())
-    {
-        if (v.y == 0.0f)
-        {
-            mObjects.push_back(new Triangle());
-            mObjects.at(1)->setName("testTriangle");
-            mObjects.at(1)->move(v.x, v.y, v.z);
-
-            qDebug() << "Found v.y = 0";
-        }
-    }
 
     // **************************************
     // Objects in optional map
@@ -188,6 +184,27 @@ void Renderer::initResources()
     VkPipelineShaderStageCreateInfo shaderStagesT[] = { vertShaderCreateInfoT, fragShaderCreateInfoT };
 
     /*************** ColorMaterial ******************/
+    mColorLineMaterial.vertShaderModule = createShader(QStringLiteral(":/color_vert.spv"));
+    mColorLineMaterial.fragShaderModule = createShader(QStringLiteral(":/color_frag.spv"));
+
+    mPointMaterial.vertShaderModule = mColorLineMaterial.vertShaderModule;
+    mPointMaterial.fragShaderModule = mColorLineMaterial.fragShaderModule;
+
+    //Updated to more common way to write it:
+    VkPipelineShaderStageCreateInfo vertShaderCreateInfoC{};
+    vertShaderCreateInfoC.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderCreateInfoC.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderCreateInfoC.module = mColorLineMaterial.vertShaderModule;
+    vertShaderCreateInfoC.pName = "main";                // start function in shader
+
+    VkPipelineShaderStageCreateInfo fragShaderCreateInfoC{};
+    fragShaderCreateInfoC.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderCreateInfoC.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderCreateInfoC.module = mColorLineMaterial.fragShaderModule;
+    fragShaderCreateInfoC.pName = "main";                // start function in shader
+
+    VkPipelineShaderStageCreateInfo shaderStagesC[] = { vertShaderCreateInfoC, fragShaderCreateInfoC };
+
     mColorMaterial.vertShaderModule = createShader(QStringLiteral(":/color_vert.spv"));
     mColorMaterial.fragShaderModule = createShader(QStringLiteral(":/color_frag.spv"));
 
@@ -195,19 +212,19 @@ void Renderer::initResources()
     mPointMaterial.fragShaderModule = mColorMaterial.fragShaderModule;
 
     //Updated to more common way to write it:
-    VkPipelineShaderStageCreateInfo vertShaderCreateInfoC{};
+    VkPipelineShaderStageCreateInfo vertShaderCreateInfo{};
     vertShaderCreateInfoC.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderCreateInfoC.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vertShaderCreateInfoC.module = mColorMaterial.vertShaderModule;
     vertShaderCreateInfoC.pName = "main";                // start function in shader
 
-    VkPipelineShaderStageCreateInfo fragShaderCreateInfoC{};
+    VkPipelineShaderStageCreateInfo fragShaderCreateInfo{};
     fragShaderCreateInfoC.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderCreateInfoC.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fragShaderCreateInfoC.module = mColorMaterial.fragShaderModule;
     fragShaderCreateInfoC.pName = "main";                // start function in shader
 
-    VkPipelineShaderStageCreateInfo shaderStagesC[] = { vertShaderCreateInfoC, fragShaderCreateInfoC };
+    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderCreateInfoC, fragShaderCreateInfoC };
 
 	/*********************** Graphics pipeline ********************************/
     VkGraphicsPipelineCreateInfo pipelineInfo{};    //Will use this variable a lot in the next 100s of lines
@@ -283,10 +300,21 @@ void Renderer::initResources()
         qFatal("Failed to create graphics pipeline: %d", result);
 
 	//Making a pipeline for drawing lines
-	mColorMaterial.pipeline = mPipeline1;                       // reusing most of the settings from the first pipeline
+    mColorLineMaterial.pipeline = mPipeline1;                       // reusing most of the settings from the first pipeline
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;   // draw lines
     rasterization.polygonMode = VK_POLYGON_MODE_FILL;           // VK_POLYGON_MODE_LINE will make a wireframe; VK_POLYGON_MODE_FILL
     rasterization.lineWidth = 5.0f;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pStages = shaderStagesC;
+    result = mDeviceFunctions->vkCreateGraphicsPipelines(logicalDevice, mPipelineCache, 1, &pipelineInfo, nullptr, &mColorLineMaterial.pipeline);
+    if (result != VK_SUCCESS)
+        qFatal("Failed to create graphics pipeline: %d", result);
+
+    //Making a pipeline for drawing solid colors
+    mColorMaterial.pipeline = mPipeline1;                       // reusing most of the settings from the first pipeline
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    rasterization.polygonMode = VK_POLYGON_MODE_FILL;           // VK_POLYGON_MODE_LINE will make a wireframe; VK_POLYGON_MODE_FILL
+    rasterization.lineWidth = 1.0f;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
     pipelineInfo.pStages = shaderStagesC;
     result = mDeviceFunctions->vkCreateGraphicsPipelines(logicalDevice, mPipelineCache, 1, &pipelineInfo, nullptr, &mColorMaterial.pipeline);
@@ -310,6 +338,10 @@ void Renderer::initResources()
         mDeviceFunctions->vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
     if (fragShaderModule)
         mDeviceFunctions->vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
+    if (mColorLineMaterial.vertShaderModule)
+        mDeviceFunctions->vkDestroyShaderModule(logicalDevice, mColorLineMaterial.vertShaderModule, nullptr);
+    if (mColorLineMaterial.fragShaderModule)
+        mDeviceFunctions->vkDestroyShaderModule(logicalDevice, mColorLineMaterial.fragShaderModule, nullptr);
     if (mColorMaterial.vertShaderModule)
         mDeviceFunctions->vkDestroyShaderModule(logicalDevice, mColorMaterial.vertShaderModule, nullptr);
     if (mColorMaterial.fragShaderModule)
@@ -368,9 +400,9 @@ void Renderer::startNextFrame()
     {
         //Draw type
 		if ((*it)->getDrawType() == 0)
-			mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline1);
+            mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorMaterial.pipeline);
         else if ((*it)->getDrawType() == 1)
-			mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorMaterial.pipeline);
+            mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorLineMaterial.pipeline);
         else
             mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPointMaterial.pipeline);
 
@@ -393,9 +425,9 @@ void Renderer::startNextFrame()
 
     //Trying to draw Point Cloud
     if (pointCloud->getDrawType() == 0)
-        mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline1);
-    else if (pointCloud->getDrawType() == 1)
         mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorMaterial.pipeline);
+    else if (pointCloud->getDrawType() == 1)
+        mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorLineMaterial.pipeline);
     else
         mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPointMaterial.pipeline);
 
@@ -842,10 +874,16 @@ void Renderer::releaseResources()
         mPipeline1 = VK_NULL_HANDLE;
     }
 
+    if (mColorLineMaterial.pipeline) {
+        mDeviceFunctions->vkDestroyPipeline(dev, mColorLineMaterial.pipeline, nullptr);
+        mColorLineMaterial.pipeline = VK_NULL_HANDLE;
+    }
+
     if (mColorMaterial.pipeline) {
         mDeviceFunctions->vkDestroyPipeline(dev, mColorMaterial.pipeline, nullptr);
         mColorMaterial.pipeline = VK_NULL_HANDLE;
     }
+
 
     if (mPointMaterial.pipeline)
     {
