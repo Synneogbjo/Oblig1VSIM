@@ -8,6 +8,8 @@
 #include "VisualObject.h"
 #include "Utilities.h"
 #include "PointCloud.h"
+#include "ball.h"
+#include "qelapsedtimer.h"
 
 class Renderer : public QVulkanWindowRenderer
 {
@@ -40,6 +42,10 @@ public:
     std::unordered_map<std::string, VisualObject*>& getMap() { return mMap; }
 
     PointCloud* pointCloud{};
+    Ball* ball{};
+    TriangulationMesh* triangulationMesh{};
+
+    QElapsedTimer deltaTime;
 
 protected:
 

@@ -9,8 +9,6 @@
 #include "HeightMap.h"
 #include "stb_image.h"
 #include "ObjMesh.h"
-#include "triangulationmesh.h"
-#include "ball.h"
 
 /*** Renderer class ***/
 Renderer::Renderer(QVulkanWindow *w, bool msaa)
@@ -43,15 +41,21 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     static_cast<HeightMap*>(mObjects.at(3))->makeTerrain(assetPath + "Heightmap.jpg");*/
 
     mObjects.push_back(new WorldAxis());
-    mObjects.push_back(new TriangulationMesh());
-    mObjects.push_back(new Ball(1.f, 1.f, assetPath + "sphere.obj"));
+    triangulationMesh = new TriangulationMesh();
+    ball = new Ball(0.1f, {0.f, -1.f, 0.f}, 1.f, assetPath + "sphere.obj");
+    mObjects.push_back(triangulationMesh);
+    mObjects.push_back(ball);
 
-    mObjects.at(1)->move(2.f);
     //mObjects.at(2)->move(2.f, 2.f);
-    mObjects.at(2)->move(2.f);
+    ball->move(-0.9f,1.1f);
+
+    //Testing one frame of ball movement logic
+    ball->CalculateAccelerationAlongPlane(*triangulationMesh);
 
     pointCloud = new PointCloud(assetPath + "pointCloudData.txt");
     pointCloud->setName("PointCloud");
+    mObjects.push_back(pointCloud);
+    pointCloud->move(-2.f);
 
     qDebug() << "Retrieved Point Cloud! Length: " << pointCloud->getVertexCount() << " | Min Pos: " << pointCloud->minPos << " | Max Pos: " << pointCloud->maxPos;
 
@@ -94,11 +98,6 @@ void Renderer::initResources()
 		if ((*it)->getIndices().size() > 0) //If object has indices
 			createIndexBuffer(uniAlign, *it);
     }
-
-    //Creates buffer for Point Cloud
-    createVertexBuffer(uniAlign, pointCloud);
-    if (pointCloud->getIndices().size() > 0)
-        createIndexBuffer(uniAlign, pointCloud);
 
     //DescriptorSets must be made before the Pipelines
     createDescriptorSetLayouts();
@@ -363,6 +362,8 @@ void Renderer::initResources()
     //mTextureHandle = createTexture((assetPath + "green-grass-texture.jpg").c_str());
 
     // getVulkanHWInfo(); // if you want to get info about the Vulkan hardware
+
+    deltaTime.start();
 }
 
 // This function is called at startup, and when the app window is resized
@@ -379,6 +380,7 @@ void Renderer::initSwapChainResources()
 
 void Renderer::startNextFrame()
 {
+    double elapsedMs = deltaTime.restart() / 1000.0;
     //Handeling input from keyboard and mouse is done in VulkanWindow
     //Has to be done each frame to get smooth movement
     mVulkanWindow->handleInput();
@@ -394,6 +396,11 @@ void Renderer::startNextFrame()
         &mDescriptorSet, 0, nullptr);
 
     setViewProjectionMatrix();   //Update the view and projection matrix in the Uniform
+
+    // Calculating ball acceleration, velocity, and position
+    ball->CalculateAccelerationAlongPlane(*triangulationMesh);
+    ball->mVelocity += ball->mAcceleration * elapsedMs;
+    ball->move(ball->mVelocity * elapsedMs);
 
     /********************************* Our draw call!: *********************************/
     for (std::vector<VisualObject*>::iterator it=mObjects.begin(); it!=mObjects.end(); it++)
@@ -423,28 +430,6 @@ void Renderer::startNextFrame()
 			mDeviceFunctions->vkCmdDraw(commandBuffer, (*it)->getVertices().size(), 1, 0, 0);   
     }
 
-    //Trying to draw Point Cloud
-    if (pointCloud->getDrawType() == 0)
-        mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorMaterial.pipeline);
-    else if (pointCloud->getDrawType() == 1)
-        mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mColorLineMaterial.pipeline);
-    else
-        mDeviceFunctions->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPointMaterial.pipeline);
-
-    QMatrix4x4 mvp = mCamera.projectionMatrix() * mCamera.viewMatrix() * pointCloud->getMatrix();
-    setModelMatrix(pointCloud->getMatrix());
-
-    setTexture(mTextureHandle, commandBuffer);
-
-    mDeviceFunctions->vkCmdBindVertexBuffers(commandBuffer, 0, 1, &pointCloud->getVBuffer(), &vbOffset);
-    //Check if we have an index buffer - if so, use Indexed draw
-    if (pointCloud->getIndices().size() > 0)
-    {
-        mDeviceFunctions->vkCmdBindIndexBuffer(commandBuffer, pointCloud->getIBuffer(), 0, VK_INDEX_TYPE_UINT32);
-        mDeviceFunctions->vkCmdDrawIndexed(commandBuffer, pointCloud->getIndices().size(), 1, 0, 0, 0); //size == number of indices
-    }
-    else   //No index buffer - use regular draw
-        mDeviceFunctions->vkCmdDraw(commandBuffer, pointCloud->getVertices().size(), 1, 0, 0);
     /***************************************/
 
     mDeviceFunctions->vkCmdEndRenderPass(commandBuffer);
@@ -455,6 +440,7 @@ void Renderer::startNextFrame()
     //mObjects.at(1)->rotate(1.0f, 0.0f, 0.0f, 1.0f);
     
     mWindow->frameReady();
+
     mWindow->requestUpdate(); // render continuously, throttled by the presentation rate
 }
 
@@ -929,19 +915,6 @@ void Renderer::releaseResources()
         }
     }
 
-    if (pointCloud->getVBuffer())
-    {
-        BufferHandle handle { pointCloud->getVBufferMemory(), pointCloud->getVBuffer() };
-        destroyBuffer(handle);
-        pointCloud->getVBuffer() = VK_NULL_HANDLE;
-        pointCloud->getVBufferMemory() = VK_NULL_HANDLE;
-
-    }
-    if (pointCloud->getIBuffer()) {
-        BufferHandle handle{ pointCloud->getIBufferMemory(), pointCloud->getIBuffer() };
-        destroyBuffer(handle);
-        pointCloud->getIBuffer() = VK_NULL_HANDLE;
-    }
     // Destroy textures
     destroyTexture(mTextureHandle);
 

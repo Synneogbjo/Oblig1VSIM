@@ -10,6 +10,12 @@ void VisualObject::move(float x, float y, float z)
     mMatrix.translate(x, y, z);
 }
 
+void VisualObject::move(const QVector3D& v)
+{
+    mMatrix.translate(v);
+}
+
+
 void VisualObject::scale(float s)
 {
     mMatrix.scale(s);

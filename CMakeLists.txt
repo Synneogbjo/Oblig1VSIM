@@ -25,6 +25,8 @@ qt_add_executable(QtVulkanApp
     PointCloud.h PointCloud.cpp
     triangulationmesh.h triangulationmesh.cpp
     ball.h ball.cpp
+    mymathlib.h mymathlib.cpp
+    TriangleStruct.h
 )
 # Define the shader files
 set(SHADER_FILES
