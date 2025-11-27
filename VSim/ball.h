@@ -1,8 +1,8 @@
 #ifndef BALL_H
 #define BALL_H
 
-#include "ObjMesh.h"
-#include "triangulationmesh.h"
+#include "../ObjMesh.h"
+#include "../triangulationmesh.h"
 
 class Ball : public ObjMesh
 {

@@ -7,9 +7,10 @@
 #include "Camera.h"
 #include "VisualObject.h"
 #include "Utilities.h"
-#include "PointCloud.h"
-#include "ball.h"
+#include "VSim/PointCloud.h"
+#include "VSim/ball.h"
 #include "qelapsedtimer.h"
+#include "VSim/regulartriangulation.h"
 
 class Renderer : public QVulkanWindowRenderer
 {
@@ -44,6 +45,8 @@ public:
     PointCloud* pointCloud{};
     Ball* ball{};
     TriangulationMesh* triangulationMesh{};
+    RegularTriangulation* regularTriangulationMesh{};
+
 
     QElapsedTimer deltaTime;
 

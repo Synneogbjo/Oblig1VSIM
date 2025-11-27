@@ -23,6 +23,11 @@ PointCloud::PointCloud(const std::string &filename)
     std::string line;
     float x, y, z;
 
+    if (std::getline(inn, line)) {
+        std::stringstream ss(line);
+        ss >> lineCount;
+    }
+
     // Read min position
     if (std::getline(inn, line)) {
         std::stringstream ss(line);

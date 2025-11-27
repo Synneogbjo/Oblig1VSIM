@@ -22,11 +22,12 @@ qt_add_executable(QtVulkanApp
     stb_image.cpp
     HeightMap.h HeightMap.cpp
     ObjMesh.h ObjMesh.cpp
-    PointCloud.h PointCloud.cpp
+    VSim/PointCloud.h VSim/PointCloud.cpp
     triangulationmesh.h triangulationmesh.cpp
-    ball.h ball.cpp
-    mymathlib.h mymathlib.cpp
+    VSim/ball.h VSim/ball.cpp
+    VSim/mymathlib.h VSim/mymathlib.cpp
     TriangleStruct.h
+    VSim/regulartriangulation.h VSim/regulartriangulation.cpp
 )
 # Define the shader files
 set(SHADER_FILES

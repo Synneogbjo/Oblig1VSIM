@@ -4,11 +4,7 @@
 #include <fstream>
 #include "VulkanWindow.h"
 #include "WorldAxis.h"
-#include "Triangle.h"
-#include "TriangleSurface.h"
-#include "HeightMap.h"
 #include "stb_image.h"
-#include "ObjMesh.h"
 
 /*** Renderer class ***/
 Renderer::Renderer(QVulkanWindow *w, bool msaa)
@@ -41,7 +37,7 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     static_cast<HeightMap*>(mObjects.at(3))->makeTerrain(assetPath + "Heightmap.jpg");*/
 
     mObjects.push_back(new WorldAxis());
-    triangulationMesh = new TriangulationMesh();
+    /*triangulationMesh = new TriangulationMesh();
     ball = new Ball(0.1f, {0.f, -1.f, 0.f}, 1.f, assetPath + "sphere.obj");
     mObjects.push_back(triangulationMesh);
     mObjects.push_back(ball);
@@ -50,12 +46,22 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     ball->move(-0.9f,1.1f);
 
     //Testing one frame of ball movement logic
-    ball->CalculateAccelerationAlongPlane(*triangulationMesh);
+    ball->CalculateAccelerationAlongPlane(*triangulationMesh);*/
 
     pointCloud = new PointCloud(assetPath + "pointCloudData.txt");
     pointCloud->setName("PointCloud");
     mObjects.push_back(pointCloud);
-    pointCloud->move(-2.f);
+
+    //pointCloud->scale(5.f);
+    //pointCloud->rotate(180, 0, 1, 0);
+    //pointCloud->move(-2.f);
+
+    regularTriangulationMesh = new RegularTriangulation(*pointCloud, 0.01f);
+    mObjects.push_back(regularTriangulationMesh);
+    //regularTriangulationMesh->scale(5.f);
+    //regularTriangulationMesh->rotate(180, 0, 1, 0);
+
+    if (regularTriangulationMesh) qDebug() << "Created regular triangulation mesh!";
 
     qDebug() << "Retrieved Point Cloud! Length: " << pointCloud->getVertexCount() << " | Min Pos: " << pointCloud->minPos << " | Max Pos: " << pointCloud->maxPos;
 
@@ -398,9 +404,12 @@ void Renderer::startNextFrame()
     setViewProjectionMatrix();   //Update the view and projection matrix in the Uniform
 
     // Calculating ball acceleration, velocity, and position
-    ball->CalculateAccelerationAlongPlane(*triangulationMesh);
-    ball->mVelocity += ball->mAcceleration * elapsedMs;
-    ball->move(ball->mVelocity * elapsedMs);
+    if (ball)
+    {
+        ball->CalculateAccelerationAlongPlane(*triangulationMesh);
+        ball->mVelocity += ball->mAcceleration * elapsedMs;
+        ball->move(ball->mVelocity * elapsedMs);
+    }
 
     /********************************* Our draw call!: *********************************/
     for (std::vector<VisualObject*>::iterator it=mObjects.begin(); it!=mObjects.end(); it++)
