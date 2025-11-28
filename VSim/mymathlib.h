@@ -9,7 +9,10 @@ class MyMathLib
 public:
     MyMathLib();
 
+    static QVector3D BarycentricCoordinates(const QVector2D& triangleP1, const QVector2D& triangleP2, const QVector2D& triangleP3, const QVector2D& point);
+
     static QVector3D KileProdukt(const QVector2D& u, const QVector2D& v);
+
     static QVector3D CalculateNormal(const QVector3D& u, const QVector3D& v);
     static QVector3D CalculateNormal(const QVector3D& p1, const QVector3D& p2, const QVector3D& p3);
     static QVector3D CalculateNormal(const Vertex& v1, const Vertex& v2, const Vertex& v3);

@@ -2,6 +2,28 @@
 
 MyMathLib::MyMathLib() {}
 
+QVector3D MyMathLib::BarycentricCoordinates(const QVector2D& triangleP1, const QVector2D& triangleP2, const QVector2D& triangleP3, const QVector2D& point)
+{
+    QVector2D v1 = triangleP2 - triangleP1;
+    QVector2D v2 = triangleP3 - triangleP1;
+
+    QVector3D normal = KileProdukt(v1, v2);
+    float area = normal.length();
+
+    QVector3D barycentric;
+    //Calculating u
+    normal = KileProdukt(triangleP2 - point, triangleP3 - point);
+    barycentric.setX(normal.z() / area);
+    //Calculating v
+    normal = KileProdukt(triangleP3 - point, triangleP1 - point);
+    barycentric.setY(normal.z() / area);
+    //Calculating w
+    normal = KileProdukt(triangleP1 - point, triangleP2 - point);
+    barycentric.setZ(normal.z() / area);
+
+    return barycentric;
+}
+
 QVector3D MyMathLib::KileProdukt(const QVector2D& u, const QVector2D& v)
 {
     return QVector3D(0,0,(u.x() * v.y()) - (u.y() * v.x()));

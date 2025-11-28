@@ -23,6 +23,9 @@ struct  Vertex {
     Vertex(float x, float y, float z, float r, float g, float b, float u, float v)
         : x(x), y(y), z(z), r(r), g(g), b(b), u(u), v(v) {}
 
+    inline QVector2D getQVector2D() { return {x, z}; }
+    inline QVector3D getQVector3D() { return {x, y, z}; }
+
     //! Overloaded ostream operator which writes all vertex data on an open textfile stream
     friend std::ostream& operator<< (std::ostream&, const Vertex&);
 

@@ -47,7 +47,6 @@ public:
     TriangulationMesh* triangulationMesh{};
     RegularTriangulation* regularTriangulationMesh{};
 
-
     QElapsedTimer deltaTime;
 
 protected:

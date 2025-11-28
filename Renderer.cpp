@@ -63,6 +63,10 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
 
     if (regularTriangulationMesh) qDebug() << "Created regular triangulation mesh!";
 
+    ball = new Ball(0.1f, {0.f, -0.1f, 0.f}, 1.f, assetPath + "sphere.obj", {0.5f,0.5f,0.5f});
+    ball->setName("Ball");
+    mObjects.push_back(ball);
+
     qDebug() << "Retrieved Point Cloud! Length: " << pointCloud->getVertexCount() << " | Min Pos: " << pointCloud->minPos << " | Max Pos: " << pointCloud->maxPos;
 
     // **************************************
@@ -406,9 +410,7 @@ void Renderer::startNextFrame()
     // Calculating ball acceleration, velocity, and position
     if (ball)
     {
-        ball->CalculateAccelerationAlongPlane(*triangulationMesh);
-        ball->mVelocity += ball->mAcceleration * elapsedMs;
-        ball->move(ball->mVelocity * elapsedMs);
+        ball->CalculateMovement(regularTriangulationMesh, elapsedMs);
     }
 
     /********************************* Our draw call!: *********************************/

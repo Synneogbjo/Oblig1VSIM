@@ -3,25 +3,21 @@
 
 #include "../ObjMesh.h"
 #include "../triangulationmesh.h"
+#include "regulartriangulation.h"
 
 class Ball : public ObjMesh
 {
     float mRadius;
-    QVector3D mGravity;
     float mMass;
-
-    float mFrictionCoeffisient = 0.5;
+    QVector3D mGravity;
 
 public:
-    Ball(const float& radius, const QVector3D& gravity, const float& mass, const std::string& filename);
+    Ball(const float& radius, const QVector3D& gravity, const float& mass, const std::string& filename, const QVector3D spawnPosition = {0,0,0});
 
     QVector3D mVelocity{};
     QVector3D mAcceleration{};
 
-    QVector3D CalculateBarycentric(const QVector2D& p1, const QVector2D& p2, const QVector2D& p3);
-    float CalculateBarycentricHeight(const QVector3D& p1, const QVector3D& p2, const QVector3D& p3);
-    FTriangle FindTriangle(const TriangulationMesh& mesh);
-    void CalculateAccelerationAlongPlane(const TriangulationMesh& triangulationMesh);
+    void CalculateMovement(RegularTriangulation* mesh, const float& deltaTime);
 };
 
 #endif // BALL_H
