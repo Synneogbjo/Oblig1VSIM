@@ -32,14 +32,14 @@ PointCloud::PointCloud(const std::string &filename)
     if (std::getline(inn, line)) {
         std::stringstream ss(line);
         ss >> x >> y >> z;
-        minPos = QVector3D(x, y, z);
+        minPos = QVector3D(x, z, y);
     }
 
     // Read max position
     if (std::getline(inn, line)) {
         std::stringstream ss(line);
         ss >> x >> y >> z;
-        maxPos = QVector3D(x, y, z);
+        maxPos = QVector3D(x, z, y);
     }
 
     while (std::getline(inn, line))

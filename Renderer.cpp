@@ -56,7 +56,7 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     //pointCloud->rotate(180, 0, 1, 0);
     //pointCloud->move(-2.f);
 
-    regularTriangulationMesh = new RegularTriangulation(*pointCloud, 0.01f);
+    regularTriangulationMesh = new RegularTriangulation(*pointCloud, .1f);
     mObjects.push_back(regularTriangulationMesh);
     //regularTriangulationMesh->scale(5.f);
     //regularTriangulationMesh->rotate(180, 0, 1, 0);
