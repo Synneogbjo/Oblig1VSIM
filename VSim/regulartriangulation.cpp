@@ -95,45 +95,24 @@ RegularTriangulation::RegularTriangulation(const PointCloud& points, const float
 ///
 QVector4D RegularTriangulation::FindBarycentric(const QVector3D& location)
 {
-    QVector2D location2D = location.toVector2D();
+    QVector2D location2D = QVector2D(location.x(), location.z());
     QVector3D barycentric;
     QVector4D barycentricWithIndex;
 
     for (int tri = 0; (tri * 3) + 2 < mIndices.size(); tri++)
     {
-        qDebug() << "indices size: " <<mIndices.size() << " largest tri: " << (tri*3)+2;
-
-        if ((tri*3) + 2 >= mIndices.size())
-        {
-            qDebug() << "tri was larger than mIndices!!";
-            return QVector4D(-1,0,0,0);
-        }
-        if (mIndices[tri*3] > mVertices.size())
-        {
-            qDebug() << "mIndices at tri * 3 was larger than mVertices!" << mIndices[tri*3];
-            return QVector4D(-1,0,0,0);
-        }
-        if (mIndices[(tri*3) + 1] > mVertices.size())
-        {
-            qDebug() << "mIndices at tri * 3 + 1 was larger than mVertices!" << mIndices[(tri*3) + 1];
-            return QVector4D(-1,0,0,0);
-        }
-        if (mIndices[(tri*3) + 2] > mVertices.size())
-        {
-            qDebug() << "mIndices at tri * 3 + 2 was larger than mVertices!" << mIndices[(tri*3) + 1];
-            return QVector4D(-1,0,0,0);
-        }
-
         barycentric = MyMathLib::BarycentricCoordinates(mVertices[mIndices[tri*3]].getQVector2D(), mVertices[mIndices[(tri*3)+1]].getQVector2D(), mVertices[mIndices[(tri*3)+2]].getQVector2D(), location2D);
-        barycentricWithIndex = QVector4D(tri, barycentric.x(), barycentric.y(), barycentric.z());
 
         if (barycentric.x() < 0 || barycentric.x() > 1 || barycentric.y() < 0 || barycentric.y() > 1 || barycentric.z() < 0 || barycentric.z() > 1) continue;
 
-        qDebug() << "Found Barycentric. tri: " << tri << ", indices: {" << mIndices[tri*3] << "," << mIndices[(tri*3)+1] << "," << mIndices[(tri*3)+2] <<
-            "},vertices: {" << mVertices[mIndices[tri*3]].getQVector3D() << "," << mVertices[mIndices[(tri*3)+1]].getQVector3D() << "," << mVertices[mIndices[(tri*3)+2]].getQVector3D()
-                 << "}, barycentricWithIndex: " << barycentricWithIndex;
+        QVector3D v1 = mVertices[mIndices[tri*3]].getQVector3D();
+        QVector3D v2 = mVertices[mIndices[(tri*3)+1]].getQVector3D();
+        QVector3D v3 = mVertices[mIndices[(tri*3)+2]].getQVector3D();
 
-        return barycentricWithIndex;
+        qDebug() << "triangle values: " << mVertices[mIndices[tri*3]].getQVector2D() << "," << mVertices[mIndices[(tri*3)+1]].getQVector2D() << "," << mVertices[mIndices[(tri*3)+2]].getQVector2D() << "\n"
+                 << "Precalculated normal: " << mFaceNormals[tri] << " | Ball location 2D: " << location2D;
+
+        return QVector4D(tri, barycentric.x(), barycentric.y(), barycentric.z());
     }
 
     return QVector4D(-1,0,0,0); // Default if the correct triangle could not be found

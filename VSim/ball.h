@@ -17,7 +17,8 @@ public:
     QVector3D mVelocity{};
     QVector3D mAcceleration{};
 
-    void CalculateMovement(RegularTriangulation* mesh, const float& deltaTime);
+    void CalculateAcceleration(RegularTriangulation* mesh, const float& deltaTime);
+    void ApplyAcceleration(const float& deltaTime);
 };
 
 #endif // BALL_H
