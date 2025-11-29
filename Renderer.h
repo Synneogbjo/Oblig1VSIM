@@ -42,10 +42,10 @@ public:
     std::vector<VisualObject*>& getObjects() { return mObjects; }
     std::unordered_map<std::string, VisualObject*>& getMap() { return mMap; }
 
-    PointCloud* pointCloud{};
-    Ball* ball{};
-    TriangulationMesh* triangulationMesh{};
-    RegularTriangulation* regularTriangulationMesh{};
+    PointCloud* mPointCloud{};
+    Ball* mBall{};
+    TriangulationMesh* mTriangulationMesh{};
+    RegularTriangulation* mRegularTriangulationMesh{};
 
     QElapsedTimer deltaTime;
 

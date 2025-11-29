@@ -48,25 +48,25 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     //Testing one frame of ball movement logic
     ball->CalculateAccelerationAlongPlane(*triangulationMesh);*/
 
-    pointCloud = new PointCloud(assetPath + "pointCloudData.txt");
-    pointCloud->setName("PointCloud");
-    mObjects.push_back(pointCloud);
+    mPointCloud = new PointCloud(assetPath + "pointCloudData.txt");
+    mPointCloud->setName("PointCloud");
+    mObjects.push_back(mPointCloud);
 
     //pointCloud->scale(5.f);
     //pointCloud->rotate(180, 0, 1, 0);
     //pointCloud->move(-2.f);
 
-    regularTriangulationMesh = new RegularTriangulation(*pointCloud, .1f);
-    mObjects.push_back(regularTriangulationMesh);
-    regularTriangulationMesh->scale(1.f);
+    mRegularTriangulationMesh = new RegularTriangulation(*mPointCloud, .1f);
+    mObjects.push_back(mRegularTriangulationMesh);
+    mRegularTriangulationMesh->scale(1.f);
     //regularTriangulationMesh->scale(5.f);
     //regularTriangulationMesh->rotate(180, 0, 1, 0);
 
-    if (regularTriangulationMesh) qDebug() << "Created regular triangulation mesh!";
+    if (mRegularTriangulationMesh) qDebug() << "Created regular triangulation mesh!";
 
-    ball = new Ball(0.1f, {0.f, -9.81f, 0.f}, 1.f, assetPath + "sphere.obj", {0.3f,0.2f,0.3f});
-    ball->setName("Ball");
-    mObjects.push_back(ball);
+    mBall = new Ball(0.1f, {0.f, -1.f, 0.f}, 1.f, assetPath + "sphere.obj", {0.f,.25f,0.f});
+    mBall->setName("Ball");
+    mObjects.push_back(mBall);
 
     // **************************************
     // Objects in optional map
@@ -407,10 +407,9 @@ void Renderer::startNextFrame()
     setViewProjectionMatrix();   //Update the view and projection matrix in the Uniform
 
     // Calculating ball acceleration, velocity, and position
-    if (ball)
+    if (mBall)
     {
-        ball->CalculateAcceleration(regularTriangulationMesh, elapsedMs);
-        ball->ApplyAcceleration(elapsedMs);
+        mBall->Update(mRegularTriangulationMesh, elapsedMs);
     }
 
     /********************************* Our draw call!: *********************************/

@@ -10,6 +10,7 @@ class Ball : public ObjMesh
     float mRadius;
     float mMass;
     QVector3D mGravity;
+    QVector4D mBarycentricWithIndex;
 
 public:
     Ball(const float& radius, const QVector3D& gravity, const float& mass, const std::string& filename, const QVector3D spawnPosition = {0,0,0});
@@ -17,8 +18,12 @@ public:
     QVector3D mVelocity{};
     QVector3D mAcceleration{};
 
+    void Update(RegularTriangulation* mesh, const float& deltaTime);
+
+    void UpdateBarycentricCoordinates(RegularTriangulation* mesh);
     void CalculateAcceleration(RegularTriangulation* mesh, const float& deltaTime);
     void ApplyAcceleration(const float& deltaTime);
+    void CheckForSurfaceCollision(RegularTriangulation* mesh, const float& deltaTime);
 };
 
 #endif // BALL_H

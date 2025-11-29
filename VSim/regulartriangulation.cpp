@@ -79,7 +79,7 @@ RegularTriangulation::RegularTriangulation(const PointCloud& points, const float
             mFaceNormals.push_back(MyMathLib::CalculateNormal(mVertices[topRight], mVertices[bottomLeft], mVertices[bottomRight]));
 
             //qDebug() << "Made tri {" << topLeft << "," << topRight <<"," << bottomLeft << "} & {" << topRight << "," << bottomRight << "," << bottomLeft << "}";
-            qDebug() << "Has normals {" << MyMathLib::CalculateNormal(mVertices[topLeft], mVertices[topRight], mVertices[bottomLeft]) << "," <<MyMathLib::CalculateNormal(mVertices[topRight], mVertices[bottomRight], mVertices[bottomLeft]) << "}";
+            //qDebug() << "Has normals {" << MyMathLib::CalculateNormal(mVertices[topLeft], mVertices[topRight], mVertices[bottomLeft]) << "," <<MyMathLib::CalculateNormal(mVertices[topRight], mVertices[bottomRight], mVertices[bottomLeft]) << "}";
 
             squaresMade++;
         }
@@ -109,11 +109,18 @@ QVector4D RegularTriangulation::FindBarycentric(const QVector3D& location)
         QVector3D v2 = mVertices[mIndices[(tri*3)+1]].getQVector3D();
         QVector3D v3 = mVertices[mIndices[(tri*3)+2]].getQVector3D();
 
-        qDebug() << "triangle values: " << mVertices[mIndices[tri*3]].getQVector2D() << "," << mVertices[mIndices[(tri*3)+1]].getQVector2D() << "," << mVertices[mIndices[(tri*3)+2]].getQVector2D() << "\n"
-                 << "Precalculated normal: " << mFaceNormals[tri] << " | Ball location 2D: " << location2D;
-
         return QVector4D(tri, barycentric.x(), barycentric.y(), barycentric.z());
     }
 
     return QVector4D(-1,0,0,0); // Default if the correct triangle could not be found
+}
+
+float RegularTriangulation::FindTriangleHeight(const int& triangleIndex, const QVector3D& position)
+{
+    if (triangleIndex < 0 || triangleIndex >= mIndices.size()) return -INFINITY;
+
+    return MyMathLib::CalculateBarycentricHeight(mVertices[mIndices[(triangleIndex*3)]].getQVector3D(),
+                                                     mVertices[mIndices[(triangleIndex*3)+1]].getQVector3D(),
+                                                     mVertices[mIndices[(triangleIndex*3)+2]].getQVector3D(),
+                                                     position);
 }

@@ -1,4 +1,5 @@
 #include "mymathlib.h"
+#include <QDebug>
 
 MyMathLib::MyMathLib() {}
 
@@ -17,6 +18,18 @@ QVector3D MyMathLib::BarycentricCoordinates(const QVector2D& triangleP1, const Q
     barycentric.setZ(areaPAB / areaABC); // w
 
     return barycentric;
+}
+
+float MyMathLib::CalculateBarycentricHeight(const QVector3D& triangleP1, const QVector3D& triangleP2, const QVector3D& triangleP3, const QVector3D& point)
+{
+    QVector2D point2D(point.x(), point.z());
+    QVector3D barycentric = BarycentricCoordinates({triangleP1.x(), triangleP1.z()}, {triangleP2.x(), triangleP2.z()}, {triangleP3.x(), triangleP3.z()}, point2D);
+
+    float height = (barycentric.x() * triangleP1.y()) + (barycentric.y() * triangleP2.y()) + (barycentric.z() * triangleP3.y());
+
+    qDebug() << "triangle: {" << triangleP1 << "," << triangleP2 << "," << triangleP3 << "} | target y: " << height << " | current z: " << point.y();
+
+    return height;
 }
 
 QVector3D MyMathLib::KileProdukt(const QVector2D& u, const QVector2D& v)
@@ -59,4 +72,9 @@ QVector3D MyMathLib::CalculateNormal(const QVector3D& p1, const QVector3D& p2, c
 QVector3D MyMathLib::CalculateNormal(const Vertex& v1, const Vertex& v2, const Vertex& v3)
 {
     return CalculateNormal(QVector3D(v1.x,v1.y,v1.z) - QVector3D(v2.x,v2.y,v2.z), QVector3D(v1.x,v1.y,v1.z) - QVector3D(v3.x,v3.y,v3.z));
+}
+
+float MyMathLib::Abs(const float& value)
+{
+    return (value < 0) ? -value : value;
 }
