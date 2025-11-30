@@ -33,6 +33,7 @@ public:
     inline std::vector<Vertex> getVertices() const { return mVertices; }
     inline const Vertex& getVertex(int index) const { return mVertices.at(index); }
 	inline std::vector<uint32_t> getIndices() const { return mIndices; }
+    inline bool hasIndices() const { return mIndices.size() > 0 ;}
 
     QVector3D getPosition();
     void setPosition(float x, float y, float z);

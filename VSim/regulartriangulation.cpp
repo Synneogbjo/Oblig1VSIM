@@ -1,7 +1,7 @@
 #include "regulartriangulation.h"
 #include "mymathlib.h"
 
-RegularTriangulation::RegularTriangulation(const PointCloud& points, const float& resolution)
+RegularTriangulation::RegularTriangulation(const PointCloud& points, const float& resolution, const QVector2D& friction)
 {
     drawType = 0;
 
@@ -55,7 +55,7 @@ RegularTriangulation::RegularTriangulation(const PointCloud& points, const float
         //qDebug() << "x " << point.x() << " y " << point.y() << " z " << point.z();
     }
 
-    qDebug() << "gridHeight: " << gridHeight << "gridWidth: " << gridWidth;
+    //qDebug() << "gridHeight: " << gridHeight << "gridWidth: " << gridWidth;
 
     int squaresMade = 0;
 
@@ -72,11 +72,13 @@ RegularTriangulation::RegularTriangulation(const PointCloud& points, const float
             mIndices.push_back(bottomLeft);
             mIndices.push_back(topRight);
             mFaceNormals.push_back(MyMathLib::CalculateNormal(mVertices[topLeft], mVertices[bottomLeft], mVertices[topRight]));
+            mFaceFrictions.push_back(friction);
 
             mIndices.push_back(topRight);
             mIndices.push_back(bottomLeft);
             mIndices.push_back(bottomRight);
             mFaceNormals.push_back(MyMathLib::CalculateNormal(mVertices[topRight], mVertices[bottomLeft], mVertices[bottomRight]));
+            mFaceFrictions.push_back(friction);
 
             //qDebug() << "Made tri {" << topLeft << "," << topRight <<"," << bottomLeft << "} & {" << topRight << "," << bottomRight << "," << bottomLeft << "}";
             //qDebug() << "Has normals {" << MyMathLib::CalculateNormal(mVertices[topLeft], mVertices[topRight], mVertices[bottomLeft]) << "," <<MyMathLib::CalculateNormal(mVertices[topRight], mVertices[bottomRight], mVertices[bottomLeft]) << "}";
@@ -123,4 +125,69 @@ float RegularTriangulation::FindTriangleHeight(const int& triangleIndex, const Q
                                                      mVertices[mIndices[(triangleIndex*3)+1]].getQVector3D(),
                                                      mVertices[mIndices[(triangleIndex*3)+2]].getQVector3D(),
                                                      position);
+}
+
+bool RegularTriangulation::RayIntersectsTriangle(const QVector3D& rayOrigin, const QVector3D& rayDir,const QVector3D& v0,const QVector3D& v1,const QVector3D& v2, float& outT, QVector3D& outHitPoint)
+{
+    //Made with lots of help from Copilot. Uses the Möller-Trumbore algorithm to calculate raytrace collision with the surface.
+    const float EPSILON = 1e-6f;
+    QVector3D edge1 = v1-v0;
+    QVector3D edge2 = v2-v0;
+    QVector3D h = QVector3D::crossProduct(rayDir, edge2);
+    float determinant = QVector3D::dotProduct(edge1, h);
+
+    if (determinant > -EPSILON && determinant < EPSILON)
+    {
+        //qDebug() << "Ray is parallel!";
+        return false; //Ray is parallel to triangle, and will not hit
+    }
+
+    //Calculates for first barycentric coordinate
+    float f = 1.0f / determinant; // Used to scale the barycentric coordinates
+    QVector3D s = rayOrigin - v0;
+    float u = f * QVector3D::dotProduct(s,h);
+    if (u < 0.0f || u > 1.0f)
+    {
+        //qDebug() << "Ray intersects outside of triangle for barycentric coordinate u!";
+        return false; // Intersection is outside of the triangle
+    }
+
+    //Calculates for second barycentric coordinate
+    QVector3D q = QVector3D::crossProduct(s, edge1);
+    float v = f * QVector3D::dotProduct(rayDir, q);
+
+    if (v < 0.0f || u + v > 1.0f)
+    {
+        //qDebug() << "Ray intersects outside of triangle for barycentric coordinate v!";
+        return false;
+    }
+
+    //Calculates the distance along the ray where the intersection occurs
+    float t = f * QVector3D::dotProduct(edge2, q);
+
+    if (t > 0.0f) //Intersection point exists at rayOrigin + rayDirection * t
+    {
+        outT = t;
+        outHitPoint = rayOrigin + rayDir * t;
+
+        //qDebug() << "Ray intersects with the triangle";
+        return true;
+    }
+
+    //qDebug() << "Could not find intersection...";
+    return false;
+}
+
+QVector2D RegularTriangulation::GetTriangleFriction(const int& triangleIndex)
+{
+    if (triangleIndex < 0 || triangleIndex >= mFaceFrictions.size()) return {0.f,0.f};
+
+    return mFaceFrictions[triangleIndex];
+}
+
+void RegularTriangulation::SetTriangleFriction(const int& triangleIndex, const QVector2D& friction)
+{
+    if (triangleIndex < 0 || triangleIndex >= mFaceFrictions.size()) return;
+
+    mFaceFrictions[triangleIndex] = friction;
 }

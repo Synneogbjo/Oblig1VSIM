@@ -18,12 +18,16 @@ public:
     QVector3D mVelocity{};
     QVector3D mAcceleration{};
 
+    QVector2D mFrictionForce{};
+    QVector3D mFrictionAcceleration{};
+
     void Update(RegularTriangulation* mesh, const float& deltaTime);
 
     void UpdateBarycentricCoordinates(RegularTriangulation* mesh);
     void CalculateAcceleration(RegularTriangulation* mesh, const float& deltaTime);
     void ApplyAcceleration(const float& deltaTime);
     void CheckForSurfaceCollision(RegularTriangulation* mesh, const float& deltaTime);
+    void CalculateFriction(RegularTriangulation* mesh, const float& deltaTime);
 };
 
 #endif // BALL_H

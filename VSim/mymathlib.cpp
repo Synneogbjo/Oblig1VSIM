@@ -27,7 +27,7 @@ float MyMathLib::CalculateBarycentricHeight(const QVector3D& triangleP1, const Q
 
     float height = (barycentric.x() * triangleP1.y()) + (barycentric.y() * triangleP2.y()) + (barycentric.z() * triangleP3.y());
 
-    qDebug() << "triangle: {" << triangleP1 << "," << triangleP2 << "," << triangleP3 << "} | target y: " << height << " | current z: " << point.y();
+    //qDebug() << "triangle: {" << triangleP1 << "," << triangleP2 << "," << triangleP3 << "} | target y: " << height << " | current z: " << point.y();
 
     return height;
 }

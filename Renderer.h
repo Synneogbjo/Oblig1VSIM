@@ -39,11 +39,22 @@ public:
     //Get Vulkan info - just for fun
     void getVulkanHWInfo();
 
+    //Adds a Visual Object to the mObjects vector during runtime, automatically allocating memory space and such
+    void addVisualObjectInRuntime(VisualObject* obj, std::string name = "");
+
+    //Removes a Visual Object from the mObjects vector during runtime, automatically releasing memory allocation and such
+    void removeVisualObjectInRuntime(VisualObject* obj);
+
+    //Spawns a ball at the location you click on the surface
+    void SpawnBallFromMouseClick(const int& mouseX, const int& mouseY);
+
+    //Destroys a ball, automatically releasing memory allocation and such
+    std::vector<Ball*>::iterator DestroyBall(Ball* ball);
+
     std::vector<VisualObject*>& getObjects() { return mObjects; }
     std::unordered_map<std::string, VisualObject*>& getMap() { return mMap; }
 
     PointCloud* mPointCloud{};
-    Ball* mBall{};
     TriangulationMesh* mTriangulationMesh{};
     RegularTriangulation* mRegularTriangulationMesh{};
 
@@ -90,6 +101,7 @@ private:
     friend class VulkanWindow;
 	std::vector<VisualObject*> mObjects;    //All objects in the program  
     std::unordered_map<std::string, VisualObject*> mMap;    // alternativ container
+    std::vector<Ball*> mBalls;
 
 	//Start of Uniforms and DescriptorSets
     BufferHandle createGeneralBuffer(const VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);

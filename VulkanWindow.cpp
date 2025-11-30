@@ -1,6 +1,7 @@
 #include "VulkanWindow.h"
 #include "Renderer.h"
 #include <QKeyEvent>
+#include "VSIM/ball.h"
 
 VulkanWindow::VulkanWindow()
 {
@@ -239,5 +240,14 @@ void VulkanWindow::handleInput()
             mCamera->updateHeigth(mCameraSpeed);
         if (mInput.E)
             mCamera->updateHeigth(-mCameraSpeed);
+    }
+
+    if (mInput.LMB)
+    {
+        qDebug() << "clicked!";
+
+        dynamic_cast<Renderer*>(mRenderer)->SpawnBallFromMouseClick(mMouseXlast, mMouseYlast);
+
+        mInput.LMB = false;
     }
 }

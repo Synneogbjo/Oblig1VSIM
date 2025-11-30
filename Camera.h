@@ -30,6 +30,7 @@ public:
 
     inline void setViewMatrix(const QMatrix4x4 &newViewMatrix){ mViewMatrix = newViewMatrix; }
     inline void setProjectionMatrix(const QMatrix4x4 &newProjectionMatrix){ mProjectionMatrix = newProjectionMatrix; }
+    inline const QVector3D& getPosition() { return mPosition; };
 
 private:
     QVector3D mEye{0.0, 0.0, 0.0};  // Camera position

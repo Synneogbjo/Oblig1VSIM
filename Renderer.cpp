@@ -56,17 +56,24 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     //pointCloud->rotate(180, 0, 1, 0);
     //pointCloud->move(-2.f);
 
-    mRegularTriangulationMesh = new RegularTriangulation(*mPointCloud, .1f);
+    mRegularTriangulationMesh = new RegularTriangulation(*mPointCloud, .2f, {0.05f, 0.03f});
     mObjects.push_back(mRegularTriangulationMesh);
     mRegularTriangulationMesh->scale(1.f);
+
+    for (int i = 0; i < 20; i++)
+    {
+        mRegularTriangulationMesh->SetTriangleFriction(i, {0.5f,0.45f});
+    }
     //regularTriangulationMesh->scale(5.f);
     //regularTriangulationMesh->rotate(180, 0, 1, 0);
 
     if (mRegularTriangulationMesh) qDebug() << "Created regular triangulation mesh!";
 
-    mBall = new Ball(0.1f, {0.f, -1.f, 0.f}, 1.f, assetPath + "sphere.obj", {0.f,.25f,0.f});
-    mBall->setName("Ball");
-    mObjects.push_back(mBall);
+    Ball* ball = new Ball(0.1f, {0.f, -1.f, 0.f}, 1.f, assetPath + "sphere.obj", {0.f,.55f,0.f});
+
+    mObjects.push_back(ball);
+    mBalls.push_back(ball);
+    ball->setName("Ball");
 
     // **************************************
     // Objects in optional map
@@ -102,9 +109,9 @@ void Renderer::initResources()
     for (auto it=mObjects.begin(); it!=mObjects.end(); it++)
     {
 		createVertexBuffer(uniAlign, *it);                //New version - more explicit to how Vulkan does it
-		//createBuffer(logicalDevice, uniAlign, *it);         //Old version 
+        //createBuffer(logicalDevice, uniAlign, *it);         //Old version
 
-		if ((*it)->getIndices().size() > 0) //If object has indices
+        if ((*it)->hasIndices()) //If object has indices
 			createIndexBuffer(uniAlign, *it);
     }
 
@@ -112,14 +119,14 @@ void Renderer::initResources()
     createDescriptorSetLayouts();
 
     /********************************* Vertex layout: *********************************/
-	VkVertexInputBindingDescription vertexBindingDesc{};
+    VkVertexInputBindingDescription vertexBindingDesc{};
 	vertexBindingDesc.binding = 0;
 	vertexBindingDesc.stride = sizeof(Vertex);
 	vertexBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     /********************************* Shader bindings: *********************************/
     //Descritpion of the attributes used for vertices in the shader
-	VkVertexInputAttributeDescription vertexAttrDesc[3];
+    VkVertexInputAttributeDescription vertexAttrDesc[3];
 	vertexAttrDesc[0].location = 0;     //position
     vertexAttrDesc[0].binding = 0;
 	vertexAttrDesc[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -141,7 +148,7 @@ void Renderer::initResources()
     vertexInputInfo.flags = 0;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDesc;
-	vertexInputInfo.vertexAttributeDescriptionCount = sizeof(vertexAttrDesc) / sizeof(vertexAttrDesc[0]);   // will be 3
+    vertexInputInfo.vertexAttributeDescriptionCount = sizeof(vertexAttrDesc) / sizeof(vertexAttrDesc[0]);   // will be 3
     vertexInputInfo.pVertexAttributeDescriptions = vertexAttrDesc;
     /*******************************************************/
 
@@ -407,9 +414,19 @@ void Renderer::startNextFrame()
     setViewProjectionMatrix();   //Update the view and projection matrix in the Uniform
 
     // Calculating ball acceleration, velocity, and position
-    if (mBall)
+    for (auto it = mBalls.begin(); it != mBalls.end();)
     {
-        mBall->Update(mRegularTriangulationMesh, elapsedMs);
+        Ball* ball = *it;
+        ball->Update(mRegularTriangulationMesh, elapsedMs);
+
+        if (ball->getPosition().y() <= -10.f)
+        {
+            it = DestroyBall(ball);
+        }
+        else
+        {
+            it++;
+        }
     }
 
     /********************************* Our draw call!: *********************************/
@@ -837,6 +854,143 @@ void Renderer::getVulkanHWInfo()
     qDebug(info.toUtf8().constData());
 
     qDebug("\n ***************************** Vulkan Hardware Info finished ******************************************* \n");
+}
+
+void Renderer::addVisualObjectInRuntime(VisualObject* obj, std::string name)
+{
+    if (name != "") obj->setName(name);
+
+    const VkPhysicalDeviceLimits *pdevLimits = &mWindow->physicalDeviceProperties()->limits;
+    const VkDeviceSize uniAlign = pdevLimits->minUniformBufferOffsetAlignment;
+
+    if (obj->getName() != "") mMap.insert(std::pair<std::string, VisualObject*>{obj->getName(),obj});
+
+    createVertexBuffer(uniAlign, obj);
+
+    if (obj->hasIndices()) createIndexBuffer(uniAlign, obj);
+
+    mObjects.push_back(obj);
+
+    qDebug() << "Added ball to objects to draw";
+}
+
+void Renderer::removeVisualObjectInRuntime(VisualObject* obj)
+{
+    if (!obj) return;
+
+    if (obj->getVBuffer())
+    {
+        BufferHandle handle {obj->getVBufferMemory(), obj->getVBuffer()};
+        destroyBuffer(handle);
+        obj->getVBuffer() = VK_NULL_HANDLE;
+        obj->getVBufferMemory() = VK_NULL_HANDLE;
+    }
+    if (obj->getIBuffer())
+    {
+        BufferHandle handle {obj->getIBufferMemory(), obj->getIBuffer()};
+        destroyBuffer(handle);
+        obj->getIBuffer() = VK_NULL_HANDLE;
+        obj->getIBufferMemory() = VK_NULL_HANDLE;
+    }
+
+    auto it = std::find(mObjects.begin(), mObjects.end(), obj);
+    if (it != mObjects.end()) mObjects.erase(it);
+
+    delete obj;
+}
+
+void Renderer::SpawnBallFromMouseClick(const int& mouseX, const int& mouseY)
+{
+    //Made with lots of help from Copilot.
+
+    qDebug() << "Spawn Ball From Mouse Click () begun. Mouse coordinates:" << mouseX << "," << mouseY;
+
+    // Step 1: Convert mouse coordinates to Normalized Device Coordinates (NDC)
+    float ndcX = (2.f * mouseX) / mWindow->width() - 1.f;
+    float ndcY = (2.f * mouseY) / mWindow->height() - 1.f;
+
+    // Step 2: Define clip-space points at near and far plane
+    QVector4D rayClipNear(ndcX, ndcY, 0.0f, 1.0f);
+    QVector4D rayClipFar (ndcX, ndcY, 1.0f, 1.0f);
+
+    // Step 3: Use the same corrected projection matrix as the shader
+    QMatrix4x4 correctedProj = mCamera.projectionMatrix() * mWindow->clipCorrectionMatrix();
+    QMatrix4x4 invProj = correctedProj.inverted();
+
+    // Step 4: Transform to eye space
+    QVector4D rayEyeNear = invProj * rayClipNear;
+    QVector4D rayEyeFar  = invProj * rayClipFar;
+    rayEyeNear /= rayEyeNear.w();
+    rayEyeFar  /= rayEyeFar.w();
+
+    // Step 5: Transform to world space
+    QMatrix4x4 invView = mCamera.viewMatrix().inverted();
+    QVector3D rayWorldNear = (invView * rayEyeNear).toVector3D();
+    QVector3D rayWorldFar  = (invView * rayEyeFar).toVector3D();
+
+    // Step 6: Construct ray origin and direction
+    QVector3D rayOrigin = rayWorldNear;
+    QVector3D rayDir = (rayWorldFar - rayWorldNear).normalized();
+
+    qDebug() << "Ray info. NdcX: " << ndcX << " | NdcY: " << ndcY << " | rayClipNear: " << rayClipNear << " | rayClipFar: " << rayClipFar << " | rayEyeNear: " << rayEyeNear
+             << " | rayEyeFar: " << rayEyeFar << " | rayWorldNear: " << rayWorldNear << " | rayWorldFar: " << rayWorldFar << " | rayOrigin: " << rayOrigin << " | rayDir: " << rayDir;
+
+    //Iterate over surface
+    QVector3D hitPoint;
+    float closestT = std::numeric_limits<float>::max();
+    bool hit = false;
+
+    auto vertices = mRegularTriangulationMesh->getVertices();
+    auto indices = mRegularTriangulationMesh->getIndices();
+
+    qDebug() << "looping through all tri's";
+
+    for (int tri = 0; tri * 3 + 2 < indices.size(); tri++)
+    {
+        QVector3D v0 = vertices[indices[tri*3]].getQVector3D();
+        QVector3D v1 = vertices[indices[(tri*3)+1]].getQVector3D();
+        QVector3D v2 = vertices[indices[(tri*3)+2]].getQVector3D();
+
+        float t;
+        QVector3D tempHit;
+        if (mRegularTriangulationMesh->RayIntersectsTriangle(rayOrigin, rayDir, v0, v1, v2, t, tempHit))
+        {
+            qDebug() << "Found intersecting triangle";
+
+            if (t < closestT)
+            {
+                closestT = t;
+                hitPoint = tempHit;
+                hit = true;
+
+                qDebug() << "saved intersecting triangle";
+            }
+        }
+    }
+
+    if (hit)
+    {
+        float radius = 0.1f;
+        QVector3D gravity = {0.f, -1.f, 0.f};
+        Ball* ball = new Ball(radius, gravity, 1.f, assetPath + "sphere.obj", hitPoint + QVector3D(0.f, radius, 0.f));
+
+        qDebug() << "spawned a ball at:" << hitPoint + QVector3D(0.f, radius, 0.f);
+
+        addVisualObjectInRuntime(ball);
+        mBalls.push_back(ball);
+    }
+}
+
+std::vector<Ball*>::iterator Renderer::DestroyBall(Ball* ball)
+{
+    if (!ball) return mBalls.end();
+
+    auto it = std::find(mBalls.begin(), mBalls.end(), ball);
+    if (it != mBalls.end()) it = mBalls.erase(it);
+
+    removeVisualObjectInRuntime(ball);
+
+    return it;
 }
 
 void Renderer::releaseSwapChainResources()
