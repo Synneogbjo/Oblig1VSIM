@@ -5,6 +5,7 @@
 #include "VulkanWindow.h"
 #include "WorldAxis.h"
 #include "stb_image.h"
+#include <random>
 
 /*** Renderer class ***/
 Renderer::Renderer(QVulkanWindow *w, bool msaa)
@@ -60,7 +61,7 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     mObjects.push_back(mRegularTriangulationMesh);
     mRegularTriangulationMesh->scale(1.f);
 
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 1000; i++)
     {
         mRegularTriangulationMesh->SetTriangleFriction(i, {0.5f,0.45f});
     }
@@ -68,12 +69,6 @@ Renderer::Renderer(QVulkanWindow *w, bool msaa)
     //regularTriangulationMesh->rotate(180, 0, 1, 0);
 
     if (mRegularTriangulationMesh) qDebug() << "Created regular triangulation mesh!";
-
-    Ball* ball = new Ball(0.1f, {0.f, -1.f, 0.f}, 1.f, assetPath + "sphere.obj", {0.f,.55f,0.f});
-
-    mObjects.push_back(ball);
-    mBalls.push_back(ball);
-    ball->setName("Ball");
 
     // **************************************
     // Objects in optional map
@@ -380,6 +375,9 @@ void Renderer::initResources()
     // getVulkanHWInfo(); // if you want to get info about the Vulkan hardware
 
     deltaTime.start();
+    traceLineUpdateTime.start();
+
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
 }
 
 // This function is called at startup, and when the app window is resized
@@ -397,6 +395,30 @@ void Renderer::initSwapChainResources()
 void Renderer::startNextFrame()
 {
     double elapsedMs = deltaTime.restart() / 1000.0;
+
+    bool updateTraceLines = (traceLineUpdateTime.elapsed() >= traceLineUpdateDelayMs);
+    bool spawnFluidSimulationBall = (fluidSimulationSpawnTime.elapsed() >= fluidSimulationSpawnDelayMs);
+
+    if (traceLineUpdateTime.elapsed() >= traceLineUpdateDelayMs) traceLineUpdateTime.restart();
+    if (fluidSimulationSpawnTime.elapsed() >= fluidSimulationSpawnDelayMs) fluidSimulationSpawnTime.restart();
+
+    if (mFluidSimulationActive && spawnFluidSimulationBall)
+    {
+        float radius = 0.1f;
+        QVector3D gravity = {0.f, -1.f, 0.f};
+
+        QVector3D position = {static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (0.5f) - 0.25f, 0.5f, static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (0.5f) - 0.25f};
+        Ball* ball = new Ball(radius, gravity, 1.f, assetPath + "sphere.obj", position);
+
+        addVisualObjectInRuntime(ball);
+        mBalls.push_back(ball);
+
+        ball->traceLineIndex = mTraceLines.size();
+        TraceLine* traceLine = new TraceLine();
+        mTraceLines.push_back(traceLine);
+        mObjects.push_back(traceLine);
+    }
+
     //Handeling input from keyboard and mouse is done in VulkanWindow
     //Has to be done each frame to get smooth movement
     mVulkanWindow->handleInput();
@@ -427,6 +449,10 @@ void Renderer::startNextFrame()
         {
             it++;
         }
+
+        if (!updateTraceLines || ball->traceLineIndex < 0) continue;
+
+        AddVertexToTraceLine(mTraceLines[ball->traceLineIndex], ball->getPosition());
     }
 
     /********************************* Our draw call!: *********************************/
@@ -870,8 +896,33 @@ void Renderer::addVisualObjectInRuntime(VisualObject* obj, std::string name)
     if (obj->hasIndices()) createIndexBuffer(uniAlign, obj);
 
     mObjects.push_back(obj);
+}
 
-    qDebug() << "Added ball to objects to draw";
+void Renderer::updateVisualObjectInRuntime(VisualObject* obj)
+{
+    if (!obj) return;
+
+    if (obj->getVBuffer())
+    {
+        BufferHandle handle {obj->getVBufferMemory(), obj->getVBuffer()};
+        destroyBuffer(handle);
+        obj->getVBuffer() = VK_NULL_HANDLE;
+        obj->getVBufferMemory() = VK_NULL_HANDLE;
+    }
+    if (obj->getIBuffer())
+    {
+        BufferHandle handle {obj->getIBufferMemory(), obj->getIBuffer()};
+        destroyBuffer(handle);
+        obj->getIBuffer() = VK_NULL_HANDLE;
+        obj->getIBufferMemory() = VK_NULL_HANDLE;
+    }
+
+    const VkPhysicalDeviceLimits *pdevLimits = &mWindow->physicalDeviceProperties()->limits;
+    const VkDeviceSize uniAlign = pdevLimits->minUniformBufferOffsetAlignment;
+
+    createVertexBuffer(uniAlign, obj);
+
+    if (obj->hasIndices()) createIndexBuffer(uniAlign, obj);
 }
 
 void Renderer::removeVisualObjectInRuntime(VisualObject* obj)
@@ -968,17 +1019,29 @@ void Renderer::SpawnBallFromMouseClick(const int& mouseX, const int& mouseY)
         }
     }
 
-    if (hit)
-    {
-        float radius = 0.1f;
-        QVector3D gravity = {0.f, -1.f, 0.f};
-        Ball* ball = new Ball(radius, gravity, 1.f, assetPath + "sphere.obj", hitPoint + QVector3D(0.f, radius, 0.f));
+    if (!hit) return;
 
-        qDebug() << "spawned a ball at:" << hitPoint + QVector3D(0.f, radius, 0.f);
+    float radius = 0.1f;
+    QVector3D gravity = {0.f, -1.f, 0.f};
+    Ball* ball = new Ball(radius, gravity, 1.f, assetPath + "sphere.obj", hitPoint + QVector3D(0.f, radius, 0.f));
 
-        addVisualObjectInRuntime(ball);
-        mBalls.push_back(ball);
-    }
+    qDebug() << "spawned a ball at:" << hitPoint + QVector3D(0.f, radius, 0.f);
+
+    addVisualObjectInRuntime(ball);
+    mBalls.push_back(ball);
+
+    ball->traceLineIndex = mTraceLines.size();
+    TraceLine* traceLine = new TraceLine();
+    mTraceLines.push_back(traceLine);
+    mObjects.push_back(traceLine);
+
+    qDebug() << "trace line index: " << ball->traceLineIndex;
+}
+
+void Renderer::StartFluidSimulation()
+{
+    mFluidSimulationActive = true;
+    fluidSimulationSpawnTime.start();
 }
 
 std::vector<Ball*>::iterator Renderer::DestroyBall(Ball* ball)
@@ -991,6 +1054,15 @@ std::vector<Ball*>::iterator Renderer::DestroyBall(Ball* ball)
     removeVisualObjectInRuntime(ball);
 
     return it;
+}
+
+void Renderer::AddVertexToTraceLine(TraceLine* traceLine, QVector3D position)
+{
+    if (!traceLine) return;
+
+    traceLine->AddVertex(position);
+
+    updateVisualObjectInRuntime(traceLine);
 }
 
 void Renderer::releaseSwapChainResources()

@@ -11,7 +11,7 @@ public:
 
     QVector4D FindBarycentric(const QVector3D& location);
     float FindTriangleHeight(const int& triangleIndex, const QVector3D& position);
-    bool RayIntersectsTriangle(const QVector3D& rayOrigin, const QVector3D& rayDir,const QVector3D& v0,const QVector3D& v1,const QVector3D& v2, float& outT, QVector3D& outHitPoint);
+    bool RayIntersectsTriangle(const QVector3D& rayOrigin, const QVector3D& rayDir,const QVector3D& v1,const QVector3D& v2,const QVector3D& v3, float& outT, QVector3D& outHitPoint);
 
     QVector2D GetTriangleFriction(const int& triangleIndex);
     void SetTriangleFriction(const int& triangleIndex, const QVector2D& friction);

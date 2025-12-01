@@ -21,6 +21,8 @@ public:
     QVector2D mFrictionForce{};
     QVector3D mFrictionAcceleration{};
 
+    int traceLineIndex = -1;
+
     void Update(RegularTriangulation* mesh, const float& deltaTime);
 
     void UpdateBarycentricCoordinates(RegularTriangulation* mesh);

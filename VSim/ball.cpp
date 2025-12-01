@@ -48,10 +48,12 @@ void Ball::CalculateAcceleration(RegularTriangulation* mesh, const float& deltaT
         return;
     }
 
+    //Inspired by Dag's lecture notes chapter 9.6
+
     float distanceToSurface = MyMathLib::Abs(getPosition().y() - mesh->FindTriangleHeight(mBarycentricWithIndex.x(), getPosition()));
     QVector3D normal = mesh->mFaceNormals[mBarycentricWithIndex.x()].normalized();
 
-    //Checks if ball is close enough to the surface to start rolling. Is not fully accurate yet. TODO: Make calculation of when to start rolling more accurate
+    //Checks if ball is close enough to the surface to start rolling.
     if (distanceToSurface >= (mGravity.length() * deltaTime) + mRadius) mAcceleration = mGravity;
     else mAcceleration = mGravity - (QVector3D::dotProduct(mGravity, normal) * normal);
 }

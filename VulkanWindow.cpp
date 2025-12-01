@@ -112,6 +112,10 @@ void VulkanWindow::keyPressEvent(QKeyEvent *event)
     {
         mInput.SPACE = true;
     }
+    if(event->key() == Qt::Key_P)
+    {
+        mInput.P = true;
+    }
 }
 
 void VulkanWindow::keyReleaseEvent(QKeyEvent *event)
@@ -165,6 +169,10 @@ void VulkanWindow::keyReleaseEvent(QKeyEvent *event)
     if(event->key() == Qt::Key_Space)
     {
         mInput.SPACE = false;
+    }
+    if(event->key() == Qt::Key_P)
+    {
+        mInput.P = false;
     }
 }
 
@@ -249,5 +257,11 @@ void VulkanWindow::handleInput()
         dynamic_cast<Renderer*>(mRenderer)->SpawnBallFromMouseClick(mMouseXlast, mMouseYlast);
 
         mInput.LMB = false;
+    }
+
+    if (mInput.P)
+    {
+        dynamic_cast<Renderer*>(mRenderer)->StartFluidSimulation();
+        mInput.P = false;
     }
 }

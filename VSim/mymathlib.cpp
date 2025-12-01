@@ -5,6 +5,8 @@ MyMathLib::MyMathLib() {}
 
 QVector3D MyMathLib::BarycentricCoordinates(const QVector2D& triangleP1, const QVector2D& triangleP2, const QVector2D& triangleP3, const QVector2D& point)
 {
+    //Inspired by Dag's lecture notes chapter 6.2.3
+
     QVector3D barycentric;
 
     float areaABC = KileProdukt(triangleP2 - triangleP1, triangleP3 - triangleP1).z(); // signed area
@@ -22,18 +24,20 @@ QVector3D MyMathLib::BarycentricCoordinates(const QVector2D& triangleP1, const Q
 
 float MyMathLib::CalculateBarycentricHeight(const QVector3D& triangleP1, const QVector3D& triangleP2, const QVector3D& triangleP3, const QVector3D& point)
 {
+    //Inspired by Dag's lecture notes chapter 6.2.4
+
     QVector2D point2D(point.x(), point.z());
     QVector3D barycentric = BarycentricCoordinates({triangleP1.x(), triangleP1.z()}, {triangleP2.x(), triangleP2.z()}, {triangleP3.x(), triangleP3.z()}, point2D);
 
     float height = (barycentric.x() * triangleP1.y()) + (barycentric.y() * triangleP2.y()) + (barycentric.z() * triangleP3.y());
-
-    //qDebug() << "triangle: {" << triangleP1 << "," << triangleP2 << "," << triangleP3 << "} | target y: " << height << " | current z: " << point.y();
 
     return height;
 }
 
 QVector3D MyMathLib::KileProdukt(const QVector2D& u, const QVector2D& v)
 {
+    //Taken from Dag's lecture notes chapter 6.2.2
+
     return QVector3D(0,0,(u.x() * v.y()) - (u.y() * v.x()));
 }
 
@@ -45,6 +49,7 @@ QVector3D MyMathLib::KileProdukt(const QVector2D& u, const QVector2D& v)
 ///
 QVector3D MyMathLib::CalculateNormal(const QVector3D& u, const QVector3D& v)
 {
+    //Inspired by Dag's lecture notes chapter 6.2.1
     return QVector3D(u.y() * v.z() - u.z() * v.y(),
             u.z() * v.x() - u.x() * v.z(),
             u.x() * v.y() - u.y() * v.x()).normalized();

@@ -26,6 +26,7 @@ struct Input
     float MWHEEL{0.f};  //MouseWheel
     int MOUSEX{0};
     int MOUSEY{0};
+    bool P{false};
 };
 
 #endif // INPUT_H

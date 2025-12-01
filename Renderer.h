@@ -11,6 +11,8 @@
 #include "VSim/ball.h"
 #include "qelapsedtimer.h"
 #include "VSim/regulartriangulation.h"
+#include "VSim/traceline.h"
+#include <random>
 
 class Renderer : public QVulkanWindowRenderer
 {
@@ -42,14 +44,22 @@ public:
     //Adds a Visual Object to the mObjects vector during runtime, automatically allocating memory space and such
     void addVisualObjectInRuntime(VisualObject* obj, std::string name = "");
 
+    //Updates a Visual Object during runtime, automatically reallocating memory space and such
+    void updateVisualObjectInRuntime(VisualObject* obj);
+
     //Removes a Visual Object from the mObjects vector during runtime, automatically releasing memory allocation and such
     void removeVisualObjectInRuntime(VisualObject* obj);
 
     //Spawns a ball at the location you click on the surface
     void SpawnBallFromMouseClick(const int& mouseX, const int& mouseY);
 
+    void StartFluidSimulation();
+
     //Destroys a ball, automatically releasing memory allocation and such
     std::vector<Ball*>::iterator DestroyBall(Ball* ball);
+
+    //Removes the old trace line, and allocates memory for a new one with more vertices
+    void AddVertexToTraceLine(TraceLine* traceLine, QVector3D position);
 
     std::vector<VisualObject*>& getObjects() { return mObjects; }
     std::unordered_map<std::string, VisualObject*>& getMap() { return mMap; }
@@ -59,6 +69,13 @@ public:
     RegularTriangulation* mRegularTriangulationMesh{};
 
     QElapsedTimer deltaTime;
+    QElapsedTimer traceLineUpdateTime;
+    float traceLineUpdateDelayMs = 200.f;
+
+    QElapsedTimer fluidSimulationSpawnTime;
+    float fluidSimulationSpawnDelayMs = 500.f;
+
+    bool mFluidSimulationActive = false;
 
 protected:
 
@@ -102,6 +119,7 @@ private:
 	std::vector<VisualObject*> mObjects;    //All objects in the program  
     std::unordered_map<std::string, VisualObject*> mMap;    // alternativ container
     std::vector<Ball*> mBalls;
+    std::vector<TraceLine*> mTraceLines;
 
 	//Start of Uniforms and DescriptorSets
     BufferHandle createGeneralBuffer(const VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);

@@ -28,6 +28,7 @@ qt_add_executable(QtVulkanApp
     VSim/mymathlib.h VSim/mymathlib.cpp
     TriangleStruct.h
     VSim/regulartriangulation.h VSim/regulartriangulation.cpp
+    VSim/traceline.h VSim/traceline.cpp
 )
 # Define the shader files
 set(SHADER_FILES
